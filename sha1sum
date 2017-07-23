@@ -1,0 +1,2 @@
+#!/bin/sh
+spim -f ./sha1sum.asm|grep -v "Loaded:"

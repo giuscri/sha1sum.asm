@@ -1,0 +1,43 @@
+#!/bin/env python3
+
+from hashlib import sha1
+from os import urandom
+from random import randint
+from subprocess import run, PIPE
+
+import binascii
+hexlify = lambda b: binascii.hexlify(b).decode('UTF-8')
+
+FMT = '*** When blob={} of len={}, spim computes the wrong hash.'
+
+def stdlib_sha1sum(blob):
+    """
+    Compute SHA-1 using Python's standard library
+    """
+    return hexlify(sha1(blob).digest())
+
+def spim_sha1sum(blob):
+    """
+    Compute SHA-1 using spim and ./sha1sum.asm
+    """
+    process = run('spim -f ./sha1sum.asm', shell=True, input=blob, stdout=PIPE)
+    return process.stdout.decode('UTF-8').strip().split('\n')[-1]
+
+if __name__ == '__main__':
+    from argparse import ArgumentParser
+    parser = ArgumentParser(description='Stress sha1sum.asm with random blobs.')
+    parser.add_argument('-n', default=42, type=int, help='Number of blobs to hash.')
+    args = parser.parse_args()
+
+    n = args.n
+    failure = False
+    for i in range(n):
+        print('*** {:3.1f}% ...'.format(i/n*100), end='\r')
+        blob = urandom(randint(0, 1024))
+        expected = stdlib_sha1sum(blob)
+        actual = spim_sha1sum(blob)
+        if expected != actual:
+            print(FMT.format(blob, len(blob)))
+            failure = True
+
+    if not failure: print('=> sha1sum.asm worked as expected.')
